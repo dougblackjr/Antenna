@@ -67,7 +67,30 @@ class Antenna
 		'rel',
 		'showinfo',
 		'start',
-		'theme'
+		'theme',
+		'widget_referrer'
+	);
+
+	// Optional Vimeo player parameters, passed as vimeo_{name}. vimeo_color is handled separately.
+	private $vimeo_options = array(
+		'api',
+		'autopause',
+		'autoplay',
+		'background',
+		'byline',
+		'controls',
+		'dnt',
+		'keyboard',
+		'loop',
+		'muted',
+		'pip',
+		'playsinline',
+		'portrait',
+		'quality',
+		'speed',
+		'texttrack',
+		'title',
+		'transparent'
 	);
 
 	public function __construct()
@@ -136,6 +159,12 @@ class Antenna
 			if ( ! empty($youtube_params))
 			{
 				$video_info['html'] = $this->_merge_into_src($video_info['html'], $youtube_params);
+			}
+
+			// Privacy-enhanced mode
+			if (ee()->TMPL->fetch_param('youtube_nocookie') == 'true')
+			{
+				$video_info['html'] = str_replace('https://www.youtube.com/embed/', 'https://www.youtube-nocookie.com/embed/', $video_info['html']);
 			}
 		}
 
@@ -241,10 +270,23 @@ class Antenna
 				$query['key'] = $embedly_key;
 		}
 
+		// YouTube's oEmbed 404s on embed and youtube-nocookie URLs, so look those up as regular watch URLs
+		if ($provider == 'youtube' && preg_match('#(?:youtube(?:-nocookie)?\.com/(?:embed|v)/)([A-Za-z0-9_-]{11})#', $video_url, $matches))
+		{
+			$video_url = 'https://www.youtube.com/watch?v=' . $matches[1];
+		}
+
 		$query['url'] = $video_url;
 
 		$max_width = (int) ee()->TMPL->fetch_param('max_width');
 		$max_height = (int) ee()->TMPL->fetch_param('max_height');
+
+		// YouTube ignores a lone maxwidth or maxheight and returns a 200px-tall player, so give it an unbounded other side
+		if ($provider == 'youtube' && ($max_width > 0 xor $max_height > 0))
+		{
+			if ($max_width > 0) $max_height = 9999;
+			else $max_width = 9999;
+		}
 
 		if ($max_width > 0)
 		{
@@ -264,12 +306,14 @@ class Antenna
 		// Some optional Vimeo parameters
 		if ($provider == 'vimeo')
 		{
-			if (ee()->TMPL->fetch_param('vimeo_byline') == 'false') $query['byline'] = 'false';
-			if (ee()->TMPL->fetch_param('vimeo_title') == 'false') $query['title'] = 'false';
-			if (ee()->TMPL->fetch_param('vimeo_autoplay') == 'true') $query['autoplay'] = 'true';
-			if (ee()->TMPL->fetch_param('vimeo_portrait') == 'false') $query['portrait'] = '0';
-			if (ee()->TMPL->fetch_param('vimeo_api') == 'true') $query['api'] = '1';
-			if (ee()->TMPL->fetch_param('vimeo_loop') == 'true') $query['loop'] = 'true';
+			foreach ($this->vimeo_options as $option)
+			{
+				$param = ee()->TMPL->fetch_param('vimeo_' . $option, null);
+				if ( ! is_null($param))
+				{
+					$query[$option] = $param;
+				}
+			}
 
 			$vimeo_color = preg_replace('/[^0-9a-f]/i', '', (string) ee()->TMPL->fetch_param('vimeo_color', ''));
 			if ($vimeo_color !== '')
@@ -289,7 +333,9 @@ class Antenna
 	 */
 	private function _fetch_video_info($url)
 	{
-		$cache_key = self::CACHE_PREFIX . md5($url);
+		// Vimeo only returns full data for domain-restricted videos when the Referer matches an allowed domain
+		$referer = (string) ee()->config->item('site_url');
+		$cache_key = self::CACHE_PREFIX . md5($url . '|' . $referer);
 
 		if ($this->refresh_cache > 0)
 		{
@@ -301,7 +347,7 @@ class Antenna
 			}
 		}
 
-		list($response, $status) = $this->curl($url);
+		list($response, $status) = $this->curl($url, $referer);
 
 		if ( ! $response || $status != 200)
 		{
@@ -498,9 +544,10 @@ class Antenna
 	 * Fetch a URL with cURL, falling back to file_get_contents
 	 *
 	 * @param string $vid_url The oEmbed request URL
+	 * @param string $referer Optional Referer header to send
 	 * @return array Response body (or FALSE) and HTTP status code
 	 */
-	public function curl($vid_url)
+	public function curl($vid_url, $referer = '')
 	{
 		$user_agent = 'ExpressionEngine Antenna/' . (defined('APP_VER') ? APP_VER : '');
 
@@ -520,6 +567,11 @@ class Antenna
 				CURLOPT_USERAGENT      => $user_agent
 			);
 
+			if ($referer !== '')
+			{
+				$options[CURLOPT_REFERER] = $referer;
+			}
+
 			curl_setopt_array($curl, $options);
 
 			$video_info = curl_exec($curl);
@@ -538,7 +590,8 @@ class Antenna
 				'http' => array(
 					'timeout'       => 15,
 					'user_agent'    => $user_agent,
-					'ignore_errors' => TRUE
+					'ignore_errors' => TRUE,
+					'header'        => ($referer !== '') ? 'Referer: ' . $referer : ''
 				)
 			));
 

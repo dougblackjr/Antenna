@@ -60,22 +60,47 @@ There are three image sizes available for videos: `{video_thumbnail}`, `{video_m
 
 All oEmbed requests are made over HTTPS, and YouTube, Vimeo, and Wistia always return HTTPS embed code. The old `force_https` parameter is no longer needed and is ignored.
 
+### YouTube
+
+Antenna accepts regular watch URLs, `youtu.be` short links, Shorts, live, playlist, `m.` and `music.` URLs. Embed URLs (`youtube.com/embed/…` and `youtube-nocookie.com/embed/…`) also work; Antenna looks them up as regular watch URLs because YouTube's oEmbed service rejects them.
+
+If you only set one of `max_width` or `max_height`, Antenna still sizes the YouTube player correctly. YouTube on its own would ignore a single dimension and return a tiny 200px-tall player.
+
 If you're using YouTube, you get access to several more parameters, such as:
 
-- `youtube_rel='0/1'` -- Show related videos at end of video. Defaults to 1.
-- `youtube_start='30'` -- Start playback this many seconds into the video.
+- `youtube_nocookie='true'` -- Use YouTube's privacy-enhanced mode (`youtube-nocookie.com`) for the embed.
+- `youtube_rel='0/1'` -- With `0`, related videos at the end come from the same channel. YouTube no longer lets you turn related videos off completely. Defaults to 1.
+- `youtube_start='30'` / `youtube_end='90'` -- Start and stop playback at these many seconds into the video.
+- `youtube_color='red/white'` -- Color of the progress bar.
 
 See [this guide from Google](https://developers.google.com/youtube/player_parameters#Parameters) for the full list of parameters available for YouTube videos. Prefix each parameter with `youtube_` when adding these parameters to your Antenna template tag.
+
+YouTube no longer honours `youtube_showinfo`, `youtube_modestbranding`, `youtube_autohide`, or `youtube_theme`. Antenna still passes them along so existing templates don't break, but they have no effect. `youtube_listType='search'` no longer works at all.
+
+*Note*: YouTube requires embeds to send a `Referer` header. If your site sets a strict `Referrer-Policy` (such as `no-referrer` or `same-origin`), the player may show "Error 153". The embed code YouTube returns already sets `referrerpolicy="strict-origin-when-cross-origin"` on the iframe, so don't strip that attribute.
+
+### Vimeo
+
+Antenna accepts regular, `player.vimeo.com`, channel, group, and showcase URLs. For unlisted videos, use the full unlisted link including the hash at the end (`vimeo.com/123456/abcdef1234`), or Vimeo will return nothing.
+
+Antenna sends your site's URL (`site_url`) as the `Referer` when it asks Vimeo for video data. That lets Vimeo return full data for videos restricted to your domain. Videos with password privacy only return limited data.
 
 If you're using Vimeo, you get access to more parameters and one more variable:
 
 - `vimeo_byline='true/false'` -- Shows the byline on the video. Defaults to true.
 - `vimeo_title='true/false'` -- Shows the title on the video. Defaults to true.
 - `vimeo_portrait='true/false'` -- Shows the user's avatar on the video. Defaults to true.
-- `vimeo_autoplay='true/false'` -- Automatically start playback of the video. Defaults to false.
-- `vimeo_api='true/false'` -- Adds 'api=1' to the vimeo embed url to allow JavaScript API usage. Defaults to false. *NOTE*: only use this if you're using the legacy Vimeo "Froogaloop" API. Keep it off if you're using the new, Player.js API.
-- `vimeo_color='EFEFEF'` -- changes the color of the player controls, and the color of the video title (if enabled). The parameter here expects a hex color code.
-- `vimeo_loop='true/false'` -- loops the Vimeo video automatically
+- `vimeo_autoplay='true/false'` -- Automatically start playback of the video. Most browsers only allow this when the video is also muted. Defaults to false.
+- `vimeo_muted='true/false'` -- Start the video muted. Defaults to false.
+- `vimeo_loop='true/false'` -- Loops the video automatically. Defaults to false.
+- `vimeo_autopause='true/false'` -- Pause this video when another Vimeo video on the page starts playing. Defaults to true.
+- `vimeo_background='true/false'` -- Background mode: hides all controls, autoplays muted, and loops (plan restrictions apply). Defaults to false.
+- `vimeo_controls='true/false'` -- Show the player controls (plan restrictions apply). Defaults to true.
+- `vimeo_dnt='true/false'` -- "Do not track": stops the player from tracking session data and setting cookies. Defaults to false.
+- `vimeo_playsinline='true/false'` -- Play inline on mobile instead of going fullscreen. Defaults to true.
+- `vimeo_keyboard='true/false'`, `vimeo_pip='true/false'`, `vimeo_speed='true/false'`, `vimeo_transparent='true/false'`, `vimeo_quality='720p'`, `vimeo_texttrack='en'` -- Passed straight through to the player. See [Vimeo's player parameters](https://help.vimeo.com/hc/en-us/articles/12426260232977-About-Player-Parameters).
+- `vimeo_color='EFEFEF'` -- Changes the color of the player controls, and the color of the video title (if enabled). The parameter here expects a hex color code.
+- `vimeo_api='true/false'` -- *Deprecated.* Only for Vimeo's old "Froogaloop" JavaScript API, which Vimeo has retired. The current [Player.js](https://github.com/vimeo/player.js) API doesn't need it.
 - `{video_description}` -- The description of the video, as set in Vimeo
 
 The plugin automatically caches returned data for one week using ExpressionEngine's cache. You can control this setting with the `cache_minutes` parameter, or set `cache_minutes` to "`0`" to disable the cache.
