@@ -1,27 +1,31 @@
-Antenna for ExpressionEngine 2, 3, 4, and 5
+Antenna for ExpressionEngine 6 and 7
 ========
 
-**Antenna** is a plugin that will generate the exact, most up-to-date YouTube, Vimeo, Wistia, or Viddler embed code available. With an [embed.ly](http://embed.ly/) API key, you also have access to [hundreds more video providers](http://embed.ly/providers). In addition to the video's embed code, **Antenna** also provides you with the video's title, its author, the author's YouTube/Vimeo URL, and a thumbnail. All you have to do is pass it a single URL.
+**Antenna** is a plugin that will generate the exact, most up-to-date YouTube, Vimeo, or Wistia embed code available. With an [embed.ly](https://embed.ly/) API key, you also have access to [hundreds more video providers](https://embed.ly/providers). In addition to the video's embed code, **Antenna** also provides you with the video's title, its author, the author's YouTube/Vimeo URL, and a thumbnail. All you have to do is pass it a single URL.
 
 You can also output various pieces of metadata about the video.
 
-Support for ExpressionEngine 1 ended with v1.23. That version can still be [downloaded here](https://github.com/vector/Antenna/releases/tag/v1.23).
+Version 3 supports ExpressionEngine 6 and 7. Older versions are still available:
 
-Support for ExpressionEngine 3, 4, and 5 started with version 2.
+- ExpressionEngine 2–5: [v2.3.2](https://github.com/vector/Antenna/releases/tag/v2.3.2)
+- ExpressionEngine 1: [v1.23](https://github.com/vector/Antenna/releases/tag/v1.23)
 
 Installation
 -------
 
-- ExpressionEngine 2:
-  - Place the directory `/third_party/antenna` in `/system/expressionengine/third_party/`.
-- ExpressionEngine 3, 4, 5:
-  - Place the directory `/third_party/antenna` in `/system/user/addons/`.
-  - Go go the addon manager and click "Install" next to Antenna.
+- Copy the directory `/system/user/addons/antenna` to `/system/user/addons/` in your ExpressionEngine install.
+- Go to the Add-on Manager and click "Install" next to Antenna.
+
+### Upgrading from 2.x
+
+- Replace your existing `/system/user/addons/antenna` directory with the new one.
+- Antenna now uses ExpressionEngine's built-in cache (file, Memcached, or Redis, whatever your site is configured to use), so its cache is cleared along with the rest of your site's caches. You can delete the old `/system/user/cache/antenna_urls/` directory.
+- Viddler support has been removed; Viddler's oEmbed service no longer exists.
 
 Usage
 -------
 
-	{exp:antenna url='{the_youtube_or_vimeo_url}' max_width="232" max_height="323"  wmode="transparent|opaque|window"}
+	{exp:antenna url='{the_youtube_or_vimeo_url}' max_width="232" max_height="323" wmode="transparent|opaque|window"}
 	    {embed_code}
 	    {video_title}
 	    {video_author}
@@ -48,22 +52,20 @@ Usage
 
 Set the `max_width` and/or `max_height` for whatever size your website requires. The video will be resized to be within those dimensions, and will stay at the correct proportions.
 
-The optional `wmode` parameter can be used if you're experiencing issues positioning HTML content in front of the embedded media. It accepts values of transparent, opaque and window.
+The optional `wmode` parameter is a holdover from Flash-based players. It's only useful for legacy `<embed>` code, and modern iframe players ignore it. It accepts values of transparent, opaque and window.
 
 If used as a single tag, it returns the HTML embed/object code for the video. If used as a pair, you get access to the variables above and can use them in conditionals.
 
 There are three image sizes available for videos: `{video_thumbnail}`, `{video_mediumres}`, and `{video_highres}`. They are not consistent across services but they should fall into rough size brackets. `{video_thumbnail}` is going to be between 100-200px wide; `{video_mediumres}` will be around 400-500px wide; and `{video_highres}` will be at least the full size of your uploaded video and could be as wide as 1280px.
 
-Antenna will automatically enforce HTTPS if the provided video URL has a protocol of `https://` and is supported by the video service. Alternatively, you can also attempt to force the particular service to return the HTTPS resource by adding the parameter:
-
-    force_https='true'
+All oEmbed requests are made over HTTPS, and YouTube, Vimeo, and Wistia always return HTTPS embed code. The old `force_https` parameter is no longer needed and is ignored.
 
 If you're using YouTube, you get access to several more parameters, such as:
 
 - `youtube_rel='0/1'` -- Show related videos at end of video. Defaults to 1.
-- `youtube_showinfo ='0/1'` -- Show the video title and uploader. Defaults to 1.
+- `youtube_start='30'` -- Start playback this many seconds into the video.
 
-See [this guide from Google](https://developers.google.com/youtube/player_parameters#Parameters) for the full list of HTML5 parameters available for YouTube videos. Prefix each parameter with `youtube_` when adding these parameters to your Antenna template tag.
+See [this guide from Google](https://developers.google.com/youtube/player_parameters#Parameters) for the full list of parameters available for YouTube videos. Prefix each parameter with `youtube_` when adding these parameters to your Antenna template tag.
 
 If you're using Vimeo, you get access to more parameters and one more variable:
 
@@ -76,24 +78,19 @@ If you're using Vimeo, you get access to more parameters and one more variable:
 - `vimeo_loop='true/false'` -- loops the Vimeo video automatically
 - `{video_description}` -- The description of the video, as set in Vimeo
 
-If you're using Viddler, you get access to two more parameters:
+The plugin automatically caches returned data for one week using ExpressionEngine's cache. You can control this setting with the `cache_minutes` parameter, or set `cache_minutes` to "`0`" to disable the cache.
 
-- `viddler_type='simple/player'` -- Specifies the player type. Defaults to player.
-- `viddler_ratio='widescreen/fullscreen'` -- Aspect ratio will be automatically determined if not set.
-
-The plugin automatically caches returned data for one week. You can control this setting with the `cache_minutes` parameter, or set `cache_minutes` to "`0`" to disable the cache.
-
-**NOTE** For this to work with all urls please ensure that in Weblog/Channel -> Preferences, you have 'Automatically turn URLs and email addresses into links?' set to 'No'.
+**NOTE** For this to work with all urls please ensure that in Channel → Settings, you have 'Automatically turn URLs and email addresses into links?' set to 'No'.
 
 Embed.ly Support
 -------
 
-By including an [embed.ly](http://embed.ly/) API key, you have access to [hundreds more video providers](http://embed.ly/providers). If your URL is not for YouTube, Vimeo, Wistia, or Viddler, **Antenna** will check embed.ly to pull the correct relevant video embed and information.
+By including an [embed.ly](https://embed.ly/) API key, you have access to [hundreds more video providers](http://embed.ly/providers). If your URL is not for YouTube, Vimeo, or Wistia, **Antenna** will check embed.ly to pull the correct relevant video embed and information.
 
 Simply include your embed.ly API key as a parameter on your `{exp:antenna}` tag like:
 
 ```
-{exp:antenna url='{example_vine_url}' embedly_key="xxxxxxxxxx" max_width="232" max_height="323"  wmode="transparent|opaque|window"}
+{exp:antenna url='{example_vine_url}' embedly_key="xxxxxxxxxx" max_width="232" max_height="323" wmode="transparent|opaque|window"}
 	...
 {/exp:antenna}
 ```
@@ -107,9 +104,9 @@ $config['antenna_embedly_key'] = 'xxxxxxxxxx';
 Compatibility
 -------
 
-**Antenna** is compatible with ExpressionEngine 2-5. The version for ExpressionEngine 2 requires 2.6+. The version for ExpressionEngine 3-5 has been tested on 3.0+.
+**Antenna** 3 is compatible with ExpressionEngine 6 and 7, and works on PHP 7 through PHP 8.x.
 
-You must be using PHP 5.2+ and you must have either the `cURL` library installed or `allow_url_fopen` enabled.
+You must have either the `cURL` extension installed or `allow_url_fopen` enabled.
 
 *Note for Wistia users*: Wistia doesn't return as much data as the other providers, so not all of the above variables will work. Also, you may need to contact Wistia and ask them to enable "oEmbed support" on your account.
 
